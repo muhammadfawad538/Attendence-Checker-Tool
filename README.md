@@ -54,7 +54,7 @@ Thresholds are configurable in `attendance/config.py`:
 
 ## Testing
 ```bash
-pytest tests/ -v
+py -m pytest tests/ -v
 ```
 
 ## Logs
