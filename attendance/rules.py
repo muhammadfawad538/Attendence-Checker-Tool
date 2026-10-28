@@ -19,6 +19,11 @@ def is_weekend(d: date) -> bool:
     return d.weekday() >= 5  # Saturday=5, Sunday=6
 
 
+def get_expected_hours(employee: str) -> float:
+    """Return expected hours per day for an employee (default 8.0)."""
+    return config.EXPECTED_HOURS.get(employee, 8.0)
+
+
 def check_overwork(records: list[Record]) -> list[tuple[str, str]]:
     """Check for 11+ hours on N or more days in a rolling window."""
     if not records:
@@ -68,7 +73,8 @@ def check_overwork(records: list[Record]) -> list[tuple[str, str]]:
 
 
 def check_short_or_late(records: list[Record]) -> list[tuple[str, str]]:
-    """Check for 0 < hours < 4 on N consecutive working days."""
+    """Check for 0 < hours < threshold on N consecutive working days.
+    Threshold is half of expected hours per day per employee (default 4h for full-time 8h)."""
     if not records:
         return []
 
@@ -77,7 +83,6 @@ def check_short_or_late(records: list[Record]) -> list[tuple[str, str]]:
         by_emp[r.employee].append(r)
 
     flags: list[tuple[str, str]] = []
-    threshold = config.SHORT_HOURS
     min_consecutive = config.SHORT_MIN_DAYS
 
     for emp, emp_records in by_emp.items():
@@ -87,11 +92,15 @@ def check_short_or_late(records: list[Record]) -> list[tuple[str, str]]:
         # Filter to working days
         working_days = [r for r in emp_records if is_working_day(r.date)]
 
+        # Get threshold for this employee (half of expected hours)
+        expected = get_expected_hours(emp)
+        threshold = expected / 2.0
+
         consecutive = 0
         streak_start = None
 
         for r in working_days:
-            # Short day: 0 < hours < 4 (0-hour days are absences, not short days)
+            # Short day: 0 < hours < threshold (0-hour days are absences, not short days)
             if 0 < r.hours_worked < threshold:
                 if consecutive == 0:
                     streak_start = r.date

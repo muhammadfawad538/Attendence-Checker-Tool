@@ -12,6 +12,7 @@ from attendance.rules import (
     check_hours_on_leave,
     check_unexplained_absence,
     check_weekend_work,
+    get_expected_hours,
 )
 
 
@@ -249,3 +250,78 @@ def test_weekend_work_no_weekends():
     ]
     flags = check_weekend_work(records)
     assert flags == []
+
+
+# --- Part-time staff tests ---
+
+def test_part_time_staff_not_flagged_for_short_hours():
+    """Part-timer at 4 hours/day should NOT be flagged for working 4h days (half of expected 8h? No, 4h is their expected)."""
+    # Part-timer with expected 4h/day - their short threshold would be 2h (half)
+    # Working 3h days should NOT flag since it's not under 2h
+    import attendance.config as config
+    original = config.EXPECTED_HOURS.copy()
+    config.EXPECTED_HOURS = {"PartTimeBob": 4.0}
+    try:
+        records = [
+            make_record("PartTimeBob", "2026-01-12", 3.0),   # Monday
+            make_record("PartTimeBob", "2026-01-13", 3.0),   # Tuesday
+            make_record("PartTimeBob", "2026-01-14", 3.0),   # Wednesday
+        ]
+        flags = check_short_or_late(records)
+        assert flags == [], f"Part-timer at 3h/day (expected 4h) should not flag: {flags}"
+    finally:
+        config.EXPECTED_HOURS = original
+
+
+def test_part_time_staff_flagged_for_very_short_hours():
+    """Part-timer at 4 hours/day SHOULD be flagged for working under 2h days (half of 4h)."""
+    import attendance.config as config
+    original = config.EXPECTED_HOURS.copy()
+    config.EXPECTED_HOURS = {"PartTimeBob": 4.0}
+    try:
+        records = [
+            make_record("PartTimeBob", "2026-01-12", 1.0),   # Monday
+            make_record("PartTimeBob", "2026-01-13", 1.0),   # Tuesday
+            make_record("PartTimeBob", "2026-01-14", 1.0),   # Wednesday
+        ]
+        flags = check_short_or_late(records)
+        assert len(flags) == 1, f"Part-timer at 1h/day (expected 4h, threshold 2h) should flag: {flags}"
+        emp, msg = flags[0]
+        assert emp == "PartTimeBob"
+        assert "under 2" in msg or "under 2.0" in msg
+    finally:
+        config.EXPECTED_HOURS = original
+
+
+def test_full_time_staff_flagged_for_under_4_hours():
+    """Full-timer (default 8h) at 3h/day should be flagged (under 4h = half of 8h)."""
+    import attendance.config as config
+    original = config.EXPECTED_HOURS.copy()
+    config.EXPECTED_HOURS = {}
+    try:
+        records = [
+            make_record("FullTimeBob", "2026-01-12", 3.0),   # Monday
+            make_record("FullTimeBob", "2026-01-13", 3.0),   # Tuesday
+            make_record("FullTimeBob", "2026-01-14", 3.0),   # Wednesday
+        ]
+        flags = check_short_or_late(records)
+        assert len(flags) == 1, f"Full-timer at 3h/day should flag: {flags}"
+        emp, msg = flags[0]
+        assert emp == "FullTimeBob"
+        assert "under 4" in msg
+    finally:
+        config.EXPECTED_HOURS = original
+
+
+def test_get_expected_hours():
+    """get_expected_hours should return default 8.0 for unknown employees, and configured value for known."""
+    import attendance.config as config
+    original = config.EXPECTED_HOURS.copy()
+    config.EXPECTED_HOURS = {"PartTimeBob": 4.0, "PartTimeCarol": 6.0}
+    try:
+        from attendance.rules import get_expected_hours
+        assert get_expected_hours("PartTimeBob") == 4.0
+        assert get_expected_hours("PartTimeCarol") == 6.0
+        assert get_expected_hours("UnknownEmployee") == 8.0
+    finally:
+        config.EXPECTED_HOURS = original
