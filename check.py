@@ -56,4 +56,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     csv_path = sys.argv[1]
-    main(csv_path)
+    try:
+        main(csv_path)
+    except FileNotFoundError:
+        print(f"File not found: {csv_path}")
+        sys.exit(1)
