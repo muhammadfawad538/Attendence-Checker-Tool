@@ -30,7 +30,7 @@ def test_full_dataset_expected_flags():
     for emp, msg in all_flags:
         by_emp.setdefault(emp, []).append(msg)
 
-    # Assert exact expected flags per employee
+    # Assert exact expected flags per employee - each employee has exactly 1 flag
     # Alice: 1 overwork (4 working days with 12h+ in 7-day window ending 2026-01-13)
     assert "Alice" in by_emp
     alice_flags = by_emp["Alice"]
@@ -38,7 +38,6 @@ def test_full_dataset_expected_flags():
     assert len(overwork_flags) == 1, f"Alice should have 1 overwork flag, got {len(overwork_flags)}: {alice_flags}"
     assert "4 days" in overwork_flags[0]
     assert "2026-01-13" in overwork_flags[0]
-    # Alice should NOT have weekend work flag (no weekend rows in data)
     weekend_flags = [f for f in alice_flags if "weekend" in f.lower()]
     assert len(weekend_flags) == 0, f"Alice should NOT have weekend work flag: {alice_flags}"
 
@@ -70,23 +69,23 @@ def test_full_dataset_expected_flags():
     assert "2026-01-19" in bridge_flags[0]
     assert "2026-01-20" in bridge_flags[0]
 
-    # Eve: 1 hours-on-leave + 1 weekend work (Jan 24 is Saturday in 2026)
+    # Eve: 1 hours-on-leave (no weekend work - duplicate moved to weekday)
     assert "Eve" in by_emp
     eve_flags = by_emp["Eve"]
     hours_on_leave_flags = [f for f in eve_flags if "hours on" in f and "sick leave" in f]
     weekend_flags = [f for f in eve_flags if "weekend" in f.lower()]
     assert len(hours_on_leave_flags) == 1, f"Eve should have 1 hours-on-leave flag, got {len(hours_on_leave_flags)}: {eve_flags}"
-    assert len(weekend_flags) == 1, f"Eve should have 1 weekend work flag, got {len(weekend_flags)}: {eve_flags}"
+    assert len(weekend_flags) == 0, f"Eve should NOT have weekend work flag: {eve_flags}"
     assert "6.5 hours" in hours_on_leave_flags[0]
     assert "2026-01-19" in hours_on_leave_flags[0]
 
-    # Frank: 1 unexplained absence + 1 weekend work (Jan 31 is Saturday in 2026)
+    # Frank: 1 unexplained absence (no weekend work - weekend row removed)
     assert "Frank" in by_emp
     frank_flags = by_emp["Frank"]
     absence_flags = [f for f in frank_flags if "no hours and no leave" in f]
     weekend_flags = [f for f in frank_flags if "weekend" in f.lower()]
     assert len(absence_flags) == 1, f"Frank should have 1 unexplained absence flag, got {len(absence_flags)}: {frank_flags}"
-    assert len(weekend_flags) == 1, f"Frank should have 1 weekend work flag, got {len(weekend_flags)}: {frank_flags}"
+    assert len(weekend_flags) == 0, f"Frank should NOT have weekend work flag: {frank_flags}"
     assert "2026-01-28" in absence_flags[0]
 
     # Grace: 1 weekend work (Jan 17-18 are Sat-Sun)
@@ -97,15 +96,14 @@ def test_full_dataset_expected_flags():
     assert "2026-01-17" in weekend_flags[0]
     assert "2026-01-18" in weekend_flags[0]
 
-    # No other flags for these employees
-    # (Alice, Bob, Carol, Dave, Eve, Frank should ONLY have the flags above)
+    # No other flags for these employees - each has exactly 1 flag
     expected_counts = {
         "Alice": 1,  # overwork
         "Bob": 1,    # short-hours
         "Carol": 1,  # leave-pattern
         "Dave": 1,   # bridge-leave
-        "Eve": 2,    # hours-on-leave + weekend work (Jan 24 is Sat)
-        "Frank": 2,  # unexplained absence + weekend work (Jan 31 is Sat)
+        "Eve": 1,    # hours-on-leave
+        "Frank": 1,  # unexplained absence
         "Grace": 1,  # weekend work
     }
     for emp, expected_count in expected_counts.items():
@@ -114,6 +112,6 @@ def test_full_dataset_expected_flags():
             f"{emp} should have exactly {expected_count} flag(s), got {actual_count}: {by_emp.get(emp, [])}"
         )
 
-    # Check duplicate-row warning for Eve on 2026-01-24
-    duplicate_warnings = [w for w in warnings if "duplicate" in w.lower() and "Eve" in w and "2026-01-24" in w]
-    assert len(duplicate_warnings) == 1, f"Expected 1 duplicate warning for Eve on 2026-01-24, got {duplicate_warnings}"
+    # Check duplicate-row warning for Eve on 2026-01-22 (moved from 2026-01-24)
+    duplicate_warnings = [w for w in warnings if "duplicate" in w.lower() and "Eve" in w and "2026-01-22" in w]
+    assert len(duplicate_warnings) == 1, f"Expected 1 duplicate warning for Eve on 2026-01-22, got {duplicate_warnings}"
