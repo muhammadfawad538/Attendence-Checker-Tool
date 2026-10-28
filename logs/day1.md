@@ -12,29 +12,23 @@
 - notes/prompts.md created with planted pattern mapping
 - check.py created with main entry point
 - attendance/ folder contains __init__.py, config.py, loader.py, rules.py
-- tests/ folder contains test_rules.py with 11 tests, all passing
+- tests/ folder contains test_rules.py (11 tests) and test_full_dataset.py (1 new test)
 - data/hours.csv created with 5 employees and planted patterns for all 6 rules
 - All flag rules implemented in attendance/rules.py
 - README.md written explaining how to run the tool and the tests
 
-## What was wrong or broke
-- Initial attempts to write files were interrupted (session ended before completion)
-- First run of check.py crashed due to Unicode encoding error in warning messages
-- Fixed by replacing ⚠️ with "WARNING:" to avoid encoding issues
-- Duplicate entry warning correctly caught instead of crashing
+## What went wrong (honest assessment)
+- Original data/hours.csv had 0.0 hours on 2026-01-06/01-07 for all employees, causing every employee to be flagged as "unexplained absence" on those dates — this was the "noise" reported
+- The data was re-written to have normal 8.0 hours on those dates, eliminating the false positives while preserving planted patterns
+- First check.py run crashed on Unicode warning emoji (⚠️); fixed to plain text "WARNING:"
+- Duplicate entry warning for Eve on 2026-01-24 works correctly
+- All 12 tests pass (11 rule tests + 1 full-dataset test)
 
 ## What changed as a result
-- All folder structure created and files written successfully
-- First implementation of flag rules completed and tested
-- check.py now runs without crashing and produces expected output
-- All tests pass (11 passed)
-- All 6 flag rules working correctly
+- Sample data re-designed so only the 6 planted patterns trigger flags
+- All flag rules implemented and verified
+- check.py runs and produces expected one-sentence flag explanations
+- Duplicate-row warnings reported, not silently dropped
 
 ## Old habit dropped today
-- Didn't create files one at a time without checking the overall structure first
-
-## Next steps for subsequent days
-- Day 2: Refine rules based on output, handle edge cases
-- Day 3: Add messy CSV handling, improve warnings
-- Day 4: Increase data size, test runtime
-- Day 5: Final review and polish
+- Didn't validate that sample data wouldn't produce universal flags before implementing rules
