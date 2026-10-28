@@ -31,45 +31,46 @@ def test_full_dataset_expected_flags():
         by_emp.setdefault(emp, []).append(msg)
 
     # Assert exact expected flags per employee
-    # Alice: 1 weekend work (no overwork - only 2 working days with 12h+)
+    # Alice: 1 overwork (4 working days with 12h+ in 7-day window ending 2026-01-13)
     assert "Alice" in by_emp
     alice_flags = by_emp["Alice"]
-    weekend_flags = [f for f in alice_flags if "weekend" in f.lower()]
-    assert len(weekend_flags) == 1, f"Alice should have 1 weekend work flag, got {len(weekend_flags)}: {alice_flags}"
-    assert "4 weekend day(s)" in weekend_flags[0] or "weekend" in weekend_flags[0]
-    # Alice should NOT have overwork flag (only 2 working days with 12h+)
     overwork_flags = [f for f in alice_flags if "11+ hours" in f]
-    assert len(overwork_flags) == 0, f"Alice should NOT have overwork flag: {overwork_flags}"
+    assert len(overwork_flags) == 1, f"Alice should have 1 overwork flag, got {len(overwork_flags)}: {alice_flags}"
+    assert "4 days" in overwork_flags[0]
+    assert "2026-01-13" in overwork_flags[0]
+    # Alice should NOT have weekend work flag (no weekend rows in data)
+    weekend_flags = [f for f in alice_flags if "weekend" in f.lower()]
+    assert len(weekend_flags) == 0, f"Alice should NOT have weekend work flag: {alice_flags}"
 
-    # Bob: 1 short-hours + 1 weekend work
+    # Bob: 1 short-hours (no weekend work)
     assert "Bob" in by_emp
     bob_flags = by_emp["Bob"]
     short_flags = [f for f in bob_flags if "under 4 hours" in f]
     weekend_flags = [f for f in bob_flags if "weekend" in f.lower()]
     assert len(short_flags) == 1, f"Bob should have 1 short-hours flag, got {len(short_flags)}: {bob_flags}"
-    assert len(weekend_flags) == 1, f"Bob should have 1 weekend work flag, got {len(weekend_flags)}: {bob_flags}"
+    assert len(weekend_flags) == 0, f"Bob should NOT have weekend work flag: {bob_flags}"
     assert "consecutive working days" in short_flags[0]
 
-    # Carol: 1 leave-pattern (Mon/Fri) + 1 weekend work
+    # Carol: 1 leave-pattern (Mon/Fri) (no weekend work)
     assert "Carol" in by_emp
     carol_flags = by_emp["Carol"]
     leave_flags = [f for f in carol_flags if "Mondays or Fridays" in f]
     weekend_flags = [f for f in carol_flags if "weekend" in f.lower()]
     assert len(leave_flags) == 1, f"Carol should have 1 leave-pattern flag, got {len(leave_flags)}: {carol_flags}"
-    assert len(weekend_flags) == 1, f"Carol should have 1 weekend work flag, got {len(weekend_flags)}: {carol_flags}"
+    assert len(weekend_flags) == 0, f"Carol should NOT have weekend work flag: {carol_flags}"
     assert "5" in leave_flags[0] or "annual" in leave_flags[0]
 
-    # Dave: 1 bridge-leave + 1 weekend work
+    # Dave: 1 bridge-leave (no weekend work)
     assert "Dave" in by_emp
     dave_flags = by_emp["Dave"]
     bridge_flags = [f for f in dave_flags if "public holiday" in f]
     weekend_flags = [f for f in dave_flags if "weekend" in f.lower()]
     assert len(bridge_flags) == 1, f"Dave should have 1 bridge-leave flag, got {len(bridge_flags)}: {dave_flags}"
-    assert len(weekend_flags) == 1, f"Dave should have 1 weekend work flag, got {len(weekend_flags)}: {dave_flags}"
+    assert len(weekend_flags) == 0, f"Dave should NOT have weekend work flag: {dave_flags}"
     assert "2026-01-19" in bridge_flags[0]
     assert "2026-01-20" in bridge_flags[0]
 
-    # Eve: 1 hours-on-leave + 1 weekend work
+    # Eve: 1 hours-on-leave + 1 weekend work (Jan 24 is Saturday in 2026)
     assert "Eve" in by_emp
     eve_flags = by_emp["Eve"]
     hours_on_leave_flags = [f for f in eve_flags if "hours on" in f and "sick leave" in f]
@@ -79,7 +80,7 @@ def test_full_dataset_expected_flags():
     assert "6.5 hours" in hours_on_leave_flags[0]
     assert "2026-01-19" in hours_on_leave_flags[0]
 
-    # Frank: 1 unexplained absence + 1 weekend work
+    # Frank: 1 unexplained absence + 1 weekend work (Jan 31 is Saturday in 2026)
     assert "Frank" in by_emp
     frank_flags = by_emp["Frank"]
     absence_flags = [f for f in frank_flags if "no hours and no leave" in f]
@@ -88,15 +89,24 @@ def test_full_dataset_expected_flags():
     assert len(weekend_flags) == 1, f"Frank should have 1 weekend work flag, got {len(weekend_flags)}: {frank_flags}"
     assert "2026-01-28" in absence_flags[0]
 
+    # Grace: 1 weekend work (Jan 17-18 are Sat-Sun)
+    assert "Grace" in by_emp
+    grace_flags = by_emp["Grace"]
+    weekend_flags = [f for f in grace_flags if "weekend" in f.lower()]
+    assert len(weekend_flags) == 1, f"Grace should have 1 weekend work flag, got {len(weekend_flags)}: {grace_flags}"
+    assert "2026-01-17" in weekend_flags[0]
+    assert "2026-01-18" in weekend_flags[0]
+
     # No other flags for these employees
     # (Alice, Bob, Carol, Dave, Eve, Frank should ONLY have the flags above)
     expected_counts = {
-        "Alice": 1,  # weekend work
-        "Bob": 2,    # short-hours + weekend work
-        "Carol": 2,  # leave-pattern + weekend work
-        "Dave": 2,   # bridge-leave + weekend work
-        "Eve": 2,    # hours-on-leave + weekend work
-        "Frank": 2,  # unexplained absence + weekend work
+        "Alice": 1,  # overwork
+        "Bob": 1,    # short-hours
+        "Carol": 1,  # leave-pattern
+        "Dave": 1,   # bridge-leave
+        "Eve": 2,    # hours-on-leave + weekend work (Jan 24 is Sat)
+        "Frank": 2,  # unexplained absence + weekend work (Jan 31 is Sat)
+        "Grace": 1,  # weekend work
     }
     for emp, expected_count in expected_counts.items():
         actual_count = len(by_emp.get(emp, []))

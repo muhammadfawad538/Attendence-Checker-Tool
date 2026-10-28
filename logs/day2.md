@@ -111,5 +111,46 @@ All 33 tests pass. `py -m pytest -v` output:
 ============================= 33 passed in 0.61s ==============================
 ```
 
+### Corrections after implementation
+**Decision B - Fix sample data (committed separately):**
+- Removed all Sat/Sun rows from data/hours.csv (weekends removed from original employees)
+- Moved Alice's overwork to 4 weekdays: 2026-01-08, 09, 12, 13 (Thu-Fri-Mon-Tue) with 12h each
+- Added Grace employee with weekend work on 2026-01-17/18 (Sat-Sun) - 2 weekend days
+- Added duplicate row for Eve on 2026-01-24 (8.0h then 0.0h) to preserve duplicate warning test
+- Eve kept as working 8h on 2026-01-24 (Sat) - triggers weekend flag
+- Frank kept as working 8h on 2026-01-31 (Sat) - triggers weekend flag
+- Result: Alice now gets OVERWORK flag (not weekend), Bob/Carol/Dave get only their original planted flags, Eve/Frank get planted flags + weekend flags, Grace gets weekend flag
+
+**Decision C - Restore test_full_dataset.py:**
+- Updated test to expect Alice to have overwork flag (not weekend)
+- Updated to expect Bob/Carol/Dave to have no weekend flags (only their original planted pattern)
+- Updated to expect Eve/Frank to have planted flag + weekend flag
+- Added Grace expectation (weekend work flag)
+- Restored duplicate warning assertion for Eve on 2026-01-24
+- Test now passes with corrected data
+
+**Tests after corrections:**
+```
+============================= 33 passed in 0.62s ==============================
+```
+
+**check.py on corrected data:**
+```
+WARNING: Line 102: duplicate entry for employee='Eve', date='2026-01-24' (kept first row with '8.0' hours, dropped duplicate with '0.0' hours)
+
+Analyzing 140 records...
+FLAG: Alice: worked 11+ hours on 4 days in the 7-day window ending 2026-01-13.
+FLAG: Bob: worked under 4 hours for 3 consecutive working days from 2026-01-12 to 2026-01-14.
+FLAG: Carol: took annual leave on 5 Mondays or Fridays in the 8 weeks ending 2026-02-16.
+FLAG: Dave: took annual leave on 2026-01-19, the day before public holiday 2026-01-20.
+FLAG: Eve: logged 6.5 hours on 2026-01-19 but that day is marked as sick leave.
+FLAG: Eve: worked 8 hours on weekend day 2026-01-24.
+FLAG: Frank: has no hours and no leave recorded for working day 2026-01-28.
+FLAG: Frank: worked 8 hours on weekend day 2026-01-31.
+FLAG: Grace: worked 2 weekend day(s): 8h on 2026-01-17, 8h on 2026-01-18.
+
+Done. Found 9 flag(s).
+```
+
 ## Human notes (written by me)
 
