@@ -79,6 +79,7 @@ Record failures in the log before fixing them.
 - If a test fails, say so. Do not weaken the test to make it pass without telling me.
 - If you made an assumption, list it.
 - If something is unfinished or only partly working, say so plainly.
+- Never report a task as done without pasted command output that proves it.
 
 ## Done means
 
