@@ -25,9 +25,20 @@ def main(csv_path: str) -> None:
     # Load data
     records, warnings = load_csv(csv_path)
 
-    # Print warnings first
+    # Handle critical data quality issues: missing columns or no data rows
     for warning in warnings:
-        print(f"WARNING: {warning}")
+        if "Missing columns" in warning:
+            print(f"ERROR: {warning}")
+            sys.exit(1)
+
+    if len(records) == 0:
+        print(f"ERROR: No valid data rows in {csv_path}")
+        sys.exit(1)
+
+    # Print non-critical warnings
+    for warning in warnings:
+        if "Missing columns" not in warning:
+            print(f"WARNING: {warning}")
 
     print(f"\nAnalyzing {len(records)} records...")
 

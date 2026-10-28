@@ -129,9 +129,16 @@ All 33 tests pass. `py -m pytest -v` output:
 - Restored duplicate warning assertion for Eve on 2026-01-24
 - Test now passes with corrected data
 
+**Decision D - Fix missing column/empty CSV handling:**
+- Modified check.py main() to treat missing required columns as ERROR (exit 1)
+- Modified check.py main() to treat empty CSV (header only, no valid data rows) as ERROR (exit 1)
+- Both print exactly one ERROR line and exit with code 1, no traceback
+- Updated tests in test_missing_file.py to expect exit code 1 and ERROR prefix
+- All 3 tests pass
+
 **Tests after corrections:**
 ```
-============================= 33 passed in 0.62s ==============================
+============================= 33 passed in 0.70s ==============================
 ```
 
 **check.py on corrected data:**
@@ -150,6 +157,17 @@ FLAG: Frank: worked 8 hours on weekend day 2026-01-31.
 FLAG: Grace: worked 2 weekend day(s): 8h on 2026-01-17, 8h on 2026-01-18.
 
 Done. Found 9 flag(s).
+```
+
+**Empty CSV and missing columns behavior:**
+```
+=== Empty CSV ===
+ERROR: No valid data rows in tests/data/hours_empty.csv
+Exit code: 1
+
+=== Missing hours ===
+ERROR: Missing columns: {'hours_worked'}
+Exit code: 1
 ```
 
 ## Human notes (written by me)
