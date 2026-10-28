@@ -52,7 +52,7 @@ def check_overwork(records: list[Record]) -> list[tuple[str, str]]:
 
         if best_count >= min_days and best_end is not None:
             msg = (
-                f"{emp} worked {threshold_hours:g}+ hours on {best_count} days "
+                f"worked {threshold_hours:g}+ hours on {best_count} days "
                 f"in the {window}-day window ending {best_end.isoformat()}."
             )
             flags.append((emp, msg))
@@ -91,7 +91,7 @@ def check_short_or_late(records: list[Record]) -> list[tuple[str, str]]:
                 consecutive += 1
                 if consecutive >= min_consecutive:
                     msg = (
-                        f"{emp} worked under {threshold:g} hours for {consecutive} consecutive working days "
+                        f"worked under {threshold:g} hours for {consecutive} consecutive working days "
                         f"from {streak_start.isoformat()} to {r.date.isoformat()}."
                     )
                     flags.append((emp, msg))
@@ -139,15 +139,18 @@ def check_leave_pattern(records: list[Record]) -> list[tuple[str, str]]:
             annual_count = sum(1 for r in mf_leaves if r.leave_type == "annual")
             sick_count = sum(1 for r in mf_leaves if r.leave_type == "sick")
 
-            parts = []
-            if annual_count:
-                parts.append(f"{annual_count} annual")
-            if sick_count:
-                parts.append(f"{sick_count} sick")
+            # Determine leave type string for message
+            if annual_count and sick_count:
+                leave_type_str = f"{annual_count} annual or {sick_count} sick"
+            elif annual_count:
+                leave_type_str = "annual"
+            elif sick_count:
+                leave_type_str = "sick"
+            else:
+                leave_type_str = "leave"
 
-            leave_desc = " or ".join(parts) + " leave"
             msg = (
-                f"{emp} took {leave_desc} on {len(mf_leaves)} Mondays or Fridays "
+                f"took {leave_type_str} leave on {len(mf_leaves)} Mondays or Fridays "
                 f"in the {lookback_weeks} weeks ending {latest_date.isoformat()}."
             )
             flags.append((emp, msg))
@@ -180,7 +183,7 @@ def check_bridge_leave(records: list[Record]) -> list[tuple[str, str]]:
             if leave.date - timedelta(days=1) in public_holidays:
                 ph_date = leave.date - timedelta(days=1)
                 msg = (
-                    f"{emp} took {leave.leave_type} leave on {leave.date.isoformat()}, "
+                    f"took {leave.leave_type} leave on {leave.date.isoformat()}, "
                     f"the day after public holiday {ph_date.isoformat()}."
                 )
                 flags.append((emp, msg))
@@ -188,7 +191,7 @@ def check_bridge_leave(records: list[Record]) -> list[tuple[str, str]]:
             elif leave.date + timedelta(days=1) in public_holidays:
                 ph_date = leave.date + timedelta(days=1)
                 msg = (
-                    f"{emp} took {leave.leave_type} leave on {leave.date.isoformat()}, "
+                    f"took {leave.leave_type} leave on {leave.date.isoformat()}, "
                     f"the day before public holiday {ph_date.isoformat()}."
                 )
                 flags.append((emp, msg))
@@ -203,7 +206,7 @@ def check_hours_on_leave(records: list[Record]) -> list[tuple[str, str]]:
     for r in records:
         if r.leave_type in ("annual", "sick") and r.hours_worked > 0:
             msg = (
-                f"{r.employee} logged {r.hours_worked:g} hours on {r.date.isoformat()} "
+                f"logged {r.hours_worked:g} hours on {r.date.isoformat()} "
                 f"but that day is marked as {r.leave_type} leave."
             )
             flags.append((r.employee, msg))
@@ -239,7 +242,7 @@ def check_unexplained_absence(records: list[Record]) -> list[tuple[str, str]]:
             # Working day with no leave
             if r.hours_worked == 0:
                 msg = (
-                    f"{emp} has no hours and no leave recorded for working day {r.date.isoformat()}."
+                    f"has no hours and no leave recorded for working day {r.date.isoformat()}."
                 )
                 flags.append((emp, msg))
 
