@@ -4,7 +4,7 @@ Returns (records, warnings) where records is a list of dicts with parsed fields,
 and warnings is a list of data-quality warning strings.
 """
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
 
@@ -14,6 +14,11 @@ class Record:
     date: date
     hours_worked: float
     leave_type: str  # "", "annual", "sick", "public_holiday"
+
+
+def is_working_day(d: date) -> bool:
+    """Return True if date is a working day (Mon-Fri)."""
+    return d.weekday() < 5  # Monday=0, Friday=4
 
 
 def parse_date(s: str) -> Optional[date]:
@@ -100,4 +105,23 @@ def load_csv(path: str) -> tuple[list[Record], list[str]]:
 
     # Sort deterministically by employee then date
     records.sort(key=lambda r: (r.employee, r.date))
+
+    # Check for missing working-day rows (gaps in calendar)
+    from collections import defaultdict
+    by_emp = defaultdict(list)
+    for r in records:
+        by_emp[r.employee].append(r)
+
+    for emp, emp_records in by_emp.items():
+        if not emp_records:
+            continue
+        dates = {r.date for r in emp_records}
+        min_date = min(dates)
+        max_date = max(dates)
+        current = min_date
+        while current <= max_date:
+            if is_working_day(current) and current not in dates:
+                warnings.append(f"Missing working day for {emp}: {current.isoformat()}")
+            current += timedelta(days=1)
+
     return records, warnings
