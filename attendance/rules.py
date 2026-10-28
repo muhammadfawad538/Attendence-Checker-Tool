@@ -1,0 +1,247 @@
+"""
+Flag rules for attendance patterns.
+Each function returns a list of (employee, message) tuples.
+"""
+from collections import defaultdict
+from datetime import date, timedelta
+
+from attendance import config
+from attendance.loader import Record
+
+
+def is_working_day(d: date) -> bool:
+    """Return True if date is a working day (Mon-Fri)."""
+    return d.weekday() < 5  # Monday=0, Friday=4
+
+
+def check_overwork(records: list[Record]) -> list[tuple[str, str]]:
+    """Check for 11+ hours on N or more days in a rolling window."""
+    if not records:
+        return []
+
+    # Group by employee
+    by_emp: dict[str, list[Record]] = defaultdict(list)
+    for r in records:
+        by_emp[r.employee].append(r)
+
+    flags: list[tuple[str, str]] = []
+    threshold_hours = config.OVERWORK_HOURS
+    min_days = config.OVERWORK_MIN_DAYS
+    window = config.OVERWORK_WINDOW_DAYS
+
+    for emp, emp_records in by_emp.items():
+        # Find all overwork days
+        overwork_days = [r for r in emp_records if r.hours_worked >= threshold_hours]
+        if len(overwork_days) < min_days:
+            continue
+
+        # Sort by date
+        overwork_days.sort(key=lambda r: r.date)
+
+        # Check each day as end of window, find the window with highest count
+        best_count = 0
+        best_end = None
+        for end_record in overwork_days:
+            window_start = end_record.date - timedelta(days=window - 1)
+            count = sum(1 for r in overwork_days if window_start <= r.date <= end_record.date)
+            if count > best_count:
+                best_count = count
+                best_end = end_record.date
+            elif count == best_count and best_end is None:
+                best_end = end_record.date
+
+        if best_count >= min_days and best_end is not None:
+            msg = (
+                f"{emp} worked {threshold_hours:g}+ hours on {best_count} days "
+                f"in the {window}-day window ending {best_end.isoformat()}."
+            )
+            flags.append((emp, msg))
+
+    return flags
+
+
+def check_short_or_late(records: list[Record]) -> list[tuple[str, str]]:
+    """Check for under 4 hours on N consecutive working days."""
+    if not records:
+        return []
+
+    by_emp: dict[str, list[Record]] = defaultdict(list)
+    for r in records:
+        by_emp[r.employee].append(r)
+
+    flags: list[tuple[str, str]] = []
+    threshold = config.SHORT_HOURS
+    min_consecutive = config.SHORT_MIN_DAYS
+
+    for emp, emp_records in by_emp.items():
+        # Sort by date
+        emp_records.sort(key=lambda r: r.date)
+
+        # Filter to working days with hours recorded (including 0 hours)
+        working_days = [r for r in emp_records if is_working_day(r.date)]
+
+        consecutive = 0
+        streak_start = None
+
+        for r in working_days:
+            if r.hours_worked < threshold:
+                if consecutive == 0:
+                    streak_start = r.date
+                consecutive += 1
+                if consecutive >= min_consecutive:
+                    msg = (
+                        f"{emp} worked under {threshold:g} hours for {consecutive} consecutive working days "
+                        f"from {streak_start.isoformat()} to {r.date.isoformat()}."
+                    )
+                    flags.append((emp, msg))
+                    break  # One flag per employee
+            else:
+                consecutive = 0
+                streak_start = None
+
+    return flags
+
+
+def check_leave_pattern(records: list[Record]) -> list[tuple[str, str]]:
+    """Check for leave on Monday or Friday repeatedly."""
+    if not records:
+        return []
+
+    by_emp: dict[str, list[Record]] = defaultdict(list)
+    for r in records:
+        by_emp[r.employee].append(r)
+
+    flags: list[tuple[str, str]] = []
+    min_count = config.LEAVE_PATTERN_MIN_COUNT
+    lookback_weeks = config.LEAVE_PATTERN_WEEKS
+    lookback_days = lookback_weeks * 7
+
+    for emp, emp_records in by_emp.items():
+        # Find leave records (annual, sick, etc., but not public_holiday)
+        leave_records = [r for r in emp_records if r.leave_type in ("annual", "sick")]
+        if not leave_records:
+            continue
+
+        # Find the latest date to anchor the lookback window
+        latest_date = max(r.date for r in leave_records)
+        window_start = latest_date - timedelta(days=lookback_days)
+
+        # Count Monday/Friday leaves in window
+        mf_leaves = [
+            r for r in leave_records
+            if window_start <= r.date <= latest_date
+            and r.date.weekday() in (0, 4)  # Monday=0, Friday=4
+        ]
+
+        if len(mf_leaves) >= min_count:
+            # Count by type for message
+            annual_count = sum(1 for r in mf_leaves if r.leave_type == "annual")
+            sick_count = sum(1 for r in mf_leaves if r.leave_type == "sick")
+
+            parts = []
+            if annual_count:
+                parts.append(f"{annual_count} annual")
+            if sick_count:
+                parts.append(f"{sick_count} sick")
+
+            leave_desc = " or ".join(parts) + " leave"
+            msg = (
+                f"{emp} took {leave_desc} on {len(mf_leaves)} Mondays or Fridays "
+                f"in the {lookback_weeks} weeks ending {latest_date.isoformat()}."
+            )
+            flags.append((emp, msg))
+
+    return flags
+
+
+def check_bridge_leave(records: list[Record]) -> list[tuple[str, str]]:
+    """Check for leave the day before or after a public holiday."""
+    if not records:
+        return []
+
+    by_emp: dict[str, list[Record]] = defaultdict(list)
+    for r in records:
+        by_emp[r.employee].append(r)
+
+    flags: list[tuple[str, str]] = []
+
+    for emp, emp_records in by_emp.items():
+        # Find public holidays
+        public_holidays = {r.date for r in emp_records if r.leave_type == "public_holiday"}
+        if not public_holidays:
+            continue
+
+        # Find leave days (annual, sick)
+        leave_days = [r for r in emp_records if r.leave_type in ("annual", "sick")]
+
+        for leave in leave_days:
+            # Check day before
+            if leave.date - timedelta(days=1) in public_holidays:
+                ph_date = leave.date - timedelta(days=1)
+                msg = (
+                    f"{emp} took {leave.leave_type} leave on {leave.date.isoformat()}, "
+                    f"the day after public holiday {ph_date.isoformat()}."
+                )
+                flags.append((emp, msg))
+            # Check day after
+            elif leave.date + timedelta(days=1) in public_holidays:
+                ph_date = leave.date + timedelta(days=1)
+                msg = (
+                    f"{emp} took {leave.leave_type} leave on {leave.date.isoformat()}, "
+                    f"the day before public holiday {ph_date.isoformat()}."
+                )
+                flags.append((emp, msg))
+
+    return flags
+
+
+def check_hours_on_leave(records: list[Record]) -> list[tuple[str, str]]:
+    """Check for hours logged on a day marked as leave."""
+    flags: list[tuple[str, str]] = []
+
+    for r in records:
+        if r.leave_type in ("annual", "sick") and r.hours_worked > 0:
+            msg = (
+                f"{r.employee} logged {r.hours_worked:g} hours on {r.date.isoformat()} "
+                f"but that day is marked as {r.leave_type} leave."
+            )
+            flags.append((r.employee, msg))
+
+    # Sort by employee then date for deterministic output
+    flags.sort(key=lambda x: (x[0], x[1]))
+    return flags
+
+
+def check_unexplained_absence(records: list[Record]) -> list[tuple[str, str]]:
+    """Check for working day with no hours and no leave record."""
+    if not records:
+        return []
+
+    by_emp: dict[str, list[Record]] = defaultdict(list)
+    for r in records:
+        by_emp[r.employee].append(r)
+
+    flags: list[tuple[str, str]] = []
+
+    for emp, emp_records in by_emp.items():
+        # Group by date (should be 1:1 from loader validation, but just in case)
+        by_date: dict[date, Record] = {r.date: r for r in emp_records}
+
+        for r in emp_records:
+            # Only check working days (Mon-Fri, not public holiday)
+            if not is_working_day(r.date):
+                continue
+            if r.leave_type == "public_holiday":
+                continue
+            if r.leave_type in ("annual", "sick"):
+                continue
+            # Working day with no leave
+            if r.hours_worked == 0:
+                msg = (
+                    f"{emp} has no hours and no leave recorded for working day {r.date.isoformat()}."
+                )
+                flags.append((emp, msg))
+
+    # Sort for deterministic output
+    flags.sort(key=lambda x: (x[0], x[1]))
+    return flags
