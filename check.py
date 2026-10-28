@@ -10,6 +10,7 @@ from attendance.rules import (
     check_bridge_leave,
     check_hours_on_leave,
     check_unexplained_absence,
+    check_weekend_work,
 )
 from attendance.config import (
     OVERWORK_HOURS,
@@ -38,6 +39,7 @@ def main(csv_path: str) -> None:
     flags.extend(check_bridge_leave(records))
     flags.extend(check_hours_on_leave(records))
     flags.extend(check_unexplained_absence(records))
+    flags.extend(check_weekend_work(records))
 
     # Print flags sorted by employee then date
     flags.sort(key=lambda x: (x[0], x[1]))

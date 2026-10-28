@@ -11,6 +11,7 @@ from attendance.rules import (
     check_bridge_leave,
     check_hours_on_leave,
     check_unexplained_absence,
+    check_weekend_work,
 )
 
 
@@ -19,19 +20,20 @@ def make_record(employee: str, d: str, hours: float, leave: str = "") -> Record:
 
 
 def test_overwork_exact_message():
-    """Overwork flag message should match exact expected text."""
+    """Overwork flag message should match exact expected text.
+    Using Thu-Fri-Mon-Tue as working days (2026-01-08, 09, 12, 13)."""
     records = [
-        make_record("Alice", "2026-01-08", 12.0),
-        make_record("Alice", "2026-01-09", 12.0),
-        make_record("Alice", "2026-01-10", 12.0),
-        make_record("Alice", "2026-01-11", 12.0),
+        make_record("Alice", "2026-01-08", 12.0),   # Thursday
+        make_record("Alice", "2026-01-09", 12.0),   # Friday
+        make_record("Alice", "2026-01-12", 12.0),   # Monday
+        make_record("Alice", "2026-01-13", 12.0),   # Tuesday
     ]
     flags = check_overwork(records)
     assert len(flags) == 1
     emp, msg = flags[0]
     assert emp == "Alice"
     # Message should NOT contain employee name
-    assert msg == "worked 11+ hours on 4 days in the 7-day window ending 2026-01-11."
+    assert msg == "worked 11+ hours on 4 days in the 7-day window ending 2026-01-13."
 
 
 def test_short_or_late_exact_message():
@@ -100,3 +102,16 @@ def test_unexplained_absence_exact_message():
     emp, msg = flags[0]
     assert emp == "Frank"
     assert msg == "has no hours and no leave recorded for working day 2026-01-28."
+
+
+def test_weekend_work_exact_message():
+    """Weekend work flag message should match exact expected text."""
+    records = [
+        make_record("Alice", "2026-01-10", 12.0),   # Saturday
+        make_record("Alice", "2026-01-11", 8.0),    # Sunday
+    ]
+    flags = check_weekend_work(records)
+    assert len(flags) == 1
+    emp, msg = flags[0]
+    assert emp == "Alice"
+    assert msg == "worked 2 weekend day(s): 12h on 2026-01-10, 8h on 2026-01-11."

@@ -11,6 +11,7 @@ from attendance.rules import (
     check_bridge_leave,
     check_hours_on_leave,
     check_unexplained_absence,
+    check_weekend_work,
 )
 
 
@@ -21,13 +22,14 @@ def make_record(employee: str, d: str, hours: float, leave: str = "") -> Record:
 # --- Overwork tests ---
 
 def test_overwork_four_days_in_seven():
-    """Alice has 4 days with 12h in a 7-day window (Jan 8-14). Should flag."""
+    """Alice has 4 days with 12h in a 7-day window (Jan 8-14). Should flag.
+    Note: 2026-01-08=Thu, 01-09=Fri, 01-12=Mon, 01-13=Tue = 4 working days."""
     records = [
-        make_record("Alice", "2026-01-08", 12.0),
-        make_record("Alice", "2026-01-09", 12.0),
-        make_record("Alice", "2026-01-10", 12.0),
-        make_record("Alice", "2026-01-11", 12.0),
-        make_record("Alice", "2026-01-12", 8.0),
+        make_record("Alice", "2026-01-08", 12.0),   # Thursday
+        make_record("Alice", "2026-01-09", 12.0),   # Friday
+        make_record("Alice", "2026-01-12", 12.0),   # Monday
+        make_record("Alice", "2026-01-13", 12.0),   # Tuesday
+        make_record("Alice", "2026-01-14", 8.0),    # Wednesday
     ]
     flags = check_overwork(records)
     assert len(flags) == 1
@@ -36,26 +38,27 @@ def test_overwork_four_days_in_seven():
     assert "11+ hours" in msg
     assert "4 days" in msg
     assert "7-day window" in msg
-    assert "2026-01-11" in msg or "2026-01-14" in msg
+    assert "2026-01-13" in msg
 
 
 def test_overwork_below_threshold():
     """Only 2 overwork days should not flag."""
     records = [
-        make_record("Bob", "2026-01-08", 12.0),
-        make_record("Bob", "2026-01-09", 12.0),
-        make_record("Bob", "2026-01-10", 8.0),
+        make_record("Bob", "2026-01-08", 12.0),   # Thursday
+        make_record("Bob", "2026-01-09", 12.0),   # Friday
+        make_record("Bob", "2026-01-12", 8.0),    # Monday
     ]
     flags = check_overwork(records)
     assert flags == []
 
 
 def test_overwork_exact_threshold():
-    """Exactly 3 days with 11.0 hours in 7-day window should flag (>= 11)."""
+    """Exactly 3 days with 11.0 hours in 7-day window should flag (>= 11).
+    Using Thu-Fri-Mon (2026-01-08, 09, 12) as working days."""
     records = [
-        make_record("Carol", "2026-01-08", 11.0),
-        make_record("Carol", "2026-01-09", 11.0),
-        make_record("Carol", "2026-01-10", 11.0),
+        make_record("Carol", "2026-01-08", 11.0),   # Thursday
+        make_record("Carol", "2026-01-09", 11.0),   # Friday
+        make_record("Carol", "2026-01-12", 11.0),   # Monday
     ]
     flags = check_overwork(records)
     assert len(flags) == 1
@@ -197,3 +200,52 @@ def test_unexplained_absence():
     assert "no hours" in msg
     assert "no leave" in msg
     assert "2026-01-28" in msg
+
+
+# --- Weekend work tests ---
+
+def test_weekend_work_flagged():
+    """Hours on Saturday/Sunday should be flagged separately, not count as overwork."""
+    records = [
+        make_record("Alice", "2026-01-10", 12.0),   # Saturday
+        make_record("Alice", "2026-01-11", 8.0),    # Sunday
+    ]
+    flags = check_weekend_work(records)
+    assert len(flags) == 1
+    emp, msg = flags[0]
+    assert emp == "Alice"
+    assert "weekend" in msg.lower()
+    assert "2026-01-10" in msg
+    assert "2026-01-11" in msg
+    assert "12" in msg or "8" in msg
+
+
+def test_weekend_work_not_in_overwork():
+    """Weekend hours should not be counted by overwork rule."""
+    records = [
+        make_record("Alice", "2026-01-08", 12.0),   # Thursday
+        make_record("Alice", "2026-01-09", 12.0),   # Friday
+        make_record("Alice", "2026-01-10", 12.0),   # Saturday
+        make_record("Alice", "2026-01-11", 12.0),   # Sunday
+    ]
+    overwork_flags = check_overwork(records)
+    weekend_flags = check_weekend_work(records)
+
+    # Overwork should only see Thu+Fri = 2 days, so no flag (needs 3)
+    assert overwork_flags == [], f"Overwork should not count weekends: {overwork_flags}"
+
+    # Weekend work should flag (4 weekend days in this test)
+    assert len(weekend_flags) == 1
+    emp, msg = weekend_flags[0]
+    assert emp == "Alice"
+    assert "weekend" in msg.lower()
+
+
+def test_weekend_work_no_weekends():
+    """No weekend days should produce no flag."""
+    records = [
+        make_record("Bob", "2026-01-12", 8.0),   # Monday
+        make_record("Bob", "2026-01-13", 8.0),   # Tuesday
+    ]
+    flags = check_weekend_work(records)
+    assert flags == []

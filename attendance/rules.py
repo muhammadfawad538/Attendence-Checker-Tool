@@ -14,6 +14,11 @@ def is_working_day(d: date) -> bool:
     return d.weekday() < 5  # Monday=0, Friday=4
 
 
+def is_weekend(d: date) -> bool:
+    """Return True if date is Saturday or Sunday."""
+    return d.weekday() >= 5  # Saturday=5, Sunday=6
+
+
 def check_overwork(records: list[Record]) -> list[tuple[str, str]]:
     """Check for 11+ hours on N or more days in a rolling window."""
     if not records:
@@ -22,7 +27,9 @@ def check_overwork(records: list[Record]) -> list[tuple[str, str]]:
     # Group by employee
     by_emp: dict[str, list[Record]] = defaultdict(list)
     for r in records:
-        by_emp[r.employee].append(r)
+        # Only count working days toward overwork (exclude weekends)
+        if not is_weekend(r.date):
+            by_emp[r.employee].append(r)
 
     flags: list[tuple[str, str]] = []
     threshold_hours = config.OVERWORK_HOURS
@@ -248,4 +255,38 @@ def check_unexplained_absence(records: list[Record]) -> list[tuple[str, str]]:
 
     # Sort for deterministic output
     flags.sort(key=lambda x: (x[0], x[1]))
+    return flags
+
+
+def check_weekend_work(records: list[Record]) -> list[tuple[str, str]]:
+    """Check for hours worked on weekends (Saturday/Sunday)."""
+    if not records:
+        return []
+
+    by_emp: dict[str, list[Record]] = defaultdict(list)
+    for r in records:
+        by_emp[r.employee].append(r)
+
+    flags: list[tuple[str, str]] = []
+
+    for emp, emp_records in by_emp.items():
+        weekend_records = [r for r in emp_records if is_weekend(r.date) and r.hours_worked > 0]
+        if not weekend_records:
+            continue
+
+        # Sort by date for deterministic output
+        weekend_records.sort(key=lambda r: r.date)
+
+        dates = [r.date.isoformat() for r in weekend_records]
+        hours_str = ", ".join(f"{r.hours_worked:g}h on {r.date.isoformat()}" for r in weekend_records)
+
+        if len(weekend_records) == 1:
+            msg = f"worked {weekend_records[0].hours_worked:g} hours on weekend day {weekend_records[0].date.isoformat()}."
+        else:
+            msg = f"worked {len(weekend_records)} weekend day(s): {hours_str}."
+
+        flags.append((emp, msg))
+
+    # Sort by employee for deterministic output
+    flags.sort(key=lambda x: x[0])
     return flags

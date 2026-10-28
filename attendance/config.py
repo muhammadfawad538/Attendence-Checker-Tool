@@ -9,3 +9,6 @@ SHORT_MIN_DAYS = 3          # consecutive short working days needed
 
 LEAVE_PATTERN_MIN_COUNT = 3 # Monday/Friday leaves needed to flag
 LEAVE_PATTERN_WEEKS = 8     # lookback window in weeks
+
+# Weekend work
+WEEKEND_WORK_ENABLED = True # flag hours worked on Saturday/Sunday
