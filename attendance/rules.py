@@ -61,7 +61,7 @@ def check_overwork(records: list[Record]) -> list[tuple[str, str]]:
 
 
 def check_short_or_late(records: list[Record]) -> list[tuple[str, str]]:
-    """Check for under 4 hours on N consecutive working days."""
+    """Check for 0 < hours < 4 on N consecutive working days."""
     if not records:
         return []
 
@@ -77,14 +77,15 @@ def check_short_or_late(records: list[Record]) -> list[tuple[str, str]]:
         # Sort by date
         emp_records.sort(key=lambda r: r.date)
 
-        # Filter to working days with hours recorded (including 0 hours)
+        # Filter to working days
         working_days = [r for r in emp_records if is_working_day(r.date)]
 
         consecutive = 0
         streak_start = None
 
         for r in working_days:
-            if r.hours_worked < threshold:
+            # Short day: 0 < hours < 4 (0-hour days are absences, not short days)
+            if 0 < r.hours_worked < threshold:
                 if consecutive == 0:
                     streak_start = r.date
                 consecutive += 1

@@ -91,6 +91,25 @@ def test_short_two_not_flagged():
     assert flags == []
 
 
+def test_short_zero_hour_days_not_counted():
+    """0-hour days should NOT count as short days; they trigger absence, not short-hours.
+    Bob has hours 0, 0, 3 on consecutive working days - should give 2 absence flags and NO short-hours flag."""
+    records = [
+        make_record("Bob", "2026-01-12", 0.0),   # Monday
+        make_record("Bob", "2026-01-13", 0.0),   # Tuesday
+        make_record("Bob", "2026-01-14", 3.0),   # Wednesday
+        make_record("Bob", "2026-01-15", 8.0),   # Thursday
+    ]
+    short_flags = check_short_or_late(records)
+    absence_flags = check_unexplained_absence(records)
+
+    # Short-hours should NOT flag because 0-hour days are not "short" (0 < hours < 4)
+    assert short_flags == [], f"Expected no short-hours flag, got {short_flags}"
+
+    # Unexplained absence should flag the two 0-hour days
+    assert len(absence_flags) == 2, f"Expected 2 absence flags, got {len(absence_flags)}: {absence_flags}"
+
+
 # --- Leave pattern tests ---
 
 def test_leave_pattern_five_monday_friday():
