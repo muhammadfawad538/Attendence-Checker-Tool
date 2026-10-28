@@ -58,6 +58,7 @@ def load_csv(path: str) -> tuple[list[Record], list[str]]:
     records: list[Record] = []
     warnings: list[str] = []
     seen: set[tuple[str, str]] = set()
+    seen_first: dict[tuple[str, str], dict] = {}  # track first occurrence of duplicates
 
     with open(path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -81,7 +82,12 @@ def load_csv(path: str) -> tuple[list[Record], list[str]]:
             # Check for duplicate (employee, date)
             key = (emp, dt_str)
             if key in seen:
-                warnings.append(f"Line {i}: duplicate entry for employee={emp!r}, date={dt_str!r}")
+                # Find the first row's hours
+                first_row_info = seen_first.get(key)
+                if first_row_info:
+                    warnings.append(f"Line {i}: duplicate entry for employee={emp!r}, date={dt_str!r} (kept first row with {first_row_info['hours']!r} hours, dropped duplicate with {hrs_str!r} hours)")
+                else:
+                    warnings.append(f"Line {i}: duplicate entry for employee={emp!r}, date={dt_str!r}")
                 continue
             seen.add(key)
 
@@ -100,6 +106,10 @@ def load_csv(path: str) -> tuple[list[Record], list[str]]:
             if lt is None:
                 warnings.append(f"Line {i}: invalid leave_type {lt_str!r} (must be empty, annual, sick, or public_holiday)")
                 continue
+
+            # Store first occurrence info for duplicate detection
+            if key not in seen_first:
+                seen_first[key] = {'hours': hrs_str, 'leave_type': lt_str}
 
             records.append(Record(employee=emp, date=dt, hours_worked=hrs, leave_type=lt))
 

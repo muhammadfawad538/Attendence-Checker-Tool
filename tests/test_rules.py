@@ -325,3 +325,36 @@ def test_get_expected_hours():
         assert get_expected_hours("UnknownEmployee") == 8.0
     finally:
         config.EXPECTED_HOURS = original
+
+
+# --- Duplicate rows tests ---
+
+def test_duplicate_row_keeps_first_emits_warning():
+    """If same employee and date appear more than once, keep first row, emit WARNING naming both rows' hours."""
+    from attendance.loader import load_csv
+    # Create a small CSV with duplicate
+    import tempfile
+    import os
+    csv_content = """employee,date,hours_worked,leave_type
+Eve,2026-01-24,8.0,
+Eve,2026-01-24,0.0,
+"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False, newline='') as f:
+        f.write(csv_content)
+        temp_path = f.name
+    try:
+        records, warnings = load_csv(temp_path)
+        # Should have 1 record (first one kept)
+        assert len(records) == 1
+        assert records[0].employee == "Eve"
+        assert records[0].hours_worked == 8.0
+        assert records[0].leave_type == ""
+        # Should have warning mentioning both hours
+        assert len(warnings) == 1
+        assert "duplicate" in warnings[0].lower()
+        assert "Eve" in warnings[0]
+        assert "2026-01-24" in warnings[0]
+        assert "8.0" in warnings[0] or "8" in warnings[0]
+        assert "0.0" in warnings[0] or "0" in warnings[0]
+    finally:
+        os.unlink(temp_path)
