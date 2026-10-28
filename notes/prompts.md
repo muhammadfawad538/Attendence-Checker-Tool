@@ -89,3 +89,38 @@
 > ... (full prompt as given)
 
 **Response:** Starting Day 2 setup - creating day2.md log, adding prompt to notes/prompts.md, updating CLAUDE.md with honesty rule. Then proceeding to audit.
+
+**IMPLEMENTATION SUMMARY (Step 2):**
+
+### Change 1: Weekend work - separate FLAG, exclude from overwork
+- **Test failure:** `ImportError: cannot import name 'check_weekend_work'`
+- **Fix:** Added `is_weekend()` function, modified `check_overwork()` to filter weekends, added `check_weekend_work()` function
+- **Test pass:** All 3 weekend tests PASSED
+- **Files changed:** attendance/rules.py, attendance/config.py, check.py, tests/test_rules.py, tests/test_flag_messages.py, tests/test_full_dataset.py, tests/test_noisy_dataset.py
+- **Commit:** 2ca9fa6
+
+### Change 2: Part-time staff support - configurable expected hours per employee
+- **Test failure:** `ImportError: cannot import name 'get_expected_hours'`
+- **Fix:** Added `EXPECTED_HOURS` dict to config.py, `get_expected_hours()` to rules.py, modified `check_short_or_late()` to use per-employee threshold (half of expected hours)
+- **Test pass:** All 4 part-time tests PASSED
+- **Files changed:** attendance/config.py, attendance/rules.py, tests/test_rules.py
+- **Commit:** 0f35f84
+
+### Change 3: Duplicate rows - keep first, emit WARNING with both hours
+- **Test failure:** Warning didn't include both hours values
+- **Fix:** Added `seen_first` dict to track first occurrence hours, updated warning message
+- **Test pass:** Test PASSED
+- **Files changed:** attendance/loader.py, tests/test_rules.py
+- **Commit:** 82f7334
+
+### Change 4: Fix empty CSV and missing columns - print clear error/warning, exit cleanly
+- **Test failure:** Tests didn't exist yet
+- **Fix:** Created test CSVs in tests/data/, added test_empty_csv and test_missing_hours_column to test_missing_file.py
+- **Test pass:** All 3 tests PASSED
+- **Files changed:** tests/test_missing_file.py, tests/data/hours_empty.csv, tests/data/hours_missing_hours.csv
+- **Commit:** 8c14356
+
+All 33 tests pass:
+```
+============================= 33 passed in 0.61s ==============================
+```

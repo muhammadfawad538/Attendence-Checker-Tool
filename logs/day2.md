@@ -47,5 +47,69 @@ Done. Found 0 flag(s).
 What changed as a result
 Audit complete. No code changes made. All findings documented above.
 
+## IMPLEMENTATION (Step 2)
+
+### Change 1: Weekend work - separate FLAG, exclude from overwork
+**Test written first:** `tests/test_rules.py::test_weekend_work_flagged`, `test_weekend_work_not_in_overwork`, `test_weekend_work_no_weekends`
+- Test failure output: `ImportError: cannot import name 'check_weekend_work'`
+- Fix: Added `is_weekend()` function, modified `check_overwork()` to filter out weekends, added `check_weekend_work()` function
+- Test pass output: All 3 weekend tests PASSED
+- Updated tests for overwork to use working days only (Thu-Fri-Mon-Tue instead of Thu-Fri-Sat-Sun)
+- Modified `test_flag_messages.py` with exact message test for weekend work
+- Updated `test_full_dataset.py` and `test_noisy_dataset.py` to include weekend work flags
+- **Real output from check.py:**
+```
+FLAG: Alice: worked 4 weekend day(s): 8h on 2026-01-03, 8h on 2026-01-04, 12h on 2026-01-10, 12h on 2026-01-11.
+```
+- Commit: `2ca9fa6`
+
+### Change 2: Part-time staff support - configurable expected hours per employee
+**Test written first:** `test_part_time_staff_not_flagged_for_short_hours`, `test_part_time_staff_flagged_for_very_short_hours`, `test_full_time_staff_flagged_for_under_4_hours`, `test_get_expected_hours`
+- Test failure output: `ImportError: cannot import name 'get_expected_hours'`
+- Fix: Added `EXPECTED_HOURS` dict to `config.py`, added `get_expected_hours()` function to `rules.py`, modified `check_short_or_late()` to use per-employee threshold (half of expected hours)
+- Test pass output: All 4 part-time tests PASSED
+- **Real output from check.py:** Same as before (no part-timers in sample data)
+- Commit: `0f35f84`
+
+### Change 3: Duplicate rows - keep first, emit WARNING with both hours
+**Test written first:** `test_duplicate_row_keeps_first_emits_warning`
+- Test failure output: `assert '8.0' in "Line 3: duplicate entry for employee='Eve', date='2026-01-24'"` - warning didn't include hours
+- Fix: Added `seen_first` dict to track first occurrence, updated warning message to include both hours
+- Test pass output: Test PASSED
+- **Real output from check.py:**
+```
+WARNING: Line 141: duplicate entry for employee='Eve', date='2026-01-24' (kept first row with '8.0' hours, dropped duplicate with '0.0' hours)
+```
+- Commit: `82f7334`
+
+### Change 4: Fix empty CSV and missing columns - print clear error/warning, exit cleanly
+**Test written first:** `test_empty_csv`, `test_missing_hours_column` (added to existing `test_missing_file.py`)
+- Test failure output: Tests didn't exist yet
+- Fix: Created test CSVs in `tests/data/`, updated test paths, verified existing behavior already correct (no crash, clear messages)
+- Test pass output: All 3 tests PASSED
+- **Real output from check.py:**
+```
+# Empty CSV:
+Analyzing 0 records...
+Done. Found 0 flag(s).
+Exit code: 0
+
+# Missing hours_worked:
+WARNING: Missing columns: {'hours_worked'}
+Analyzing 0 records...
+Done. Found 0 flag(s).
+Exit code: 0
+
+# Missing file:
+File not found: /path/to/nonexistent.csv
+Exit code: 1
+```
+- Commit: `8c14356`
+
+All 33 tests pass. `py -m pytest -v` output:
+```
+============================= 33 passed in 0.61s ==============================
+```
+
 ## Human notes (written by me)
 
