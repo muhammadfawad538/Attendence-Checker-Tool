@@ -60,7 +60,7 @@ def load_csv(path: str) -> tuple[list[Record], list[str]]:
     seen: set[tuple[str, str]] = set()
     seen_first: dict[tuple[str, str], dict] = {}  # track first occurrence of duplicates
 
-    with open(path, newline="", encoding="utf-8") as f:
+    with open(path, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         required = {"employee", "date", "hours_worked", "leave_type"}
         if reader.fieldnames is None or not required.issubset(set(reader.fieldnames)):
@@ -69,10 +69,10 @@ def load_csv(path: str) -> tuple[list[Record], list[str]]:
             return records, warnings
 
         for i, row in enumerate(reader, start=2):  # line numbers (1=header)
-            emp = row.get("employee", "").strip()
-            dt_str = row.get("date", "").strip()
-            hrs_str = row.get("hours_worked", "").strip()
-            lt_str = row.get("leave_type", "").strip()
+            emp = (row.get("employee") or "").strip()
+            dt_str = (row.get("date") or "").strip()
+            hrs_str = (row.get("hours_worked") or "").strip()
+            lt_str = (row.get("leave_type") or "").strip()
 
             # Check for missing fields
             if not emp or not dt_str or not hrs_str:
