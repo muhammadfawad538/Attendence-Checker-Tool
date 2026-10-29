@@ -25,3 +25,4 @@ Day 2: refine rules and handle edge cases with tests-first approach.
 - My fail-first check on the old code only produced import errors (check_weekend_work did not exist in the Day 1 rules.py), so it proved less than I thought. Then I reran it for the input-error tests only.
 - tests/test_input_errors.py hard-coded cwd="D:/must-quest", which would fail on any other machine. I fixed it on Day 3.
 - Habit I dropped: accepting a green test run without reading what the assertions expect.
+- Fail-first check on old code (8c14356): git checkout 8c14356 -- check.py attendance/loader.py ; py -m pytest tests/test_input_errors.py -q → 2 FAILED (exit code 0 instead of 1 for both empty CSV and missing columns). git checkout HEAD -- check.py attendance/loader.py ; py -m pytest -q → 42 passed.

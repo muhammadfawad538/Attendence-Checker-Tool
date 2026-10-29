@@ -1,13 +1,17 @@
 """Tests for full pipeline on files."""
 import subprocess
 import sys
+from pathlib import Path
+
+ROOT = Path(__file__).parent.parent
+CHECK_PY = ROOT / "check.py"
+DATA_DIR = ROOT / "tests" / "data"
 
 
 def test_missing_file_clean_error():
     """Missing file should print one clear error and exit non-zero with no traceback."""
     result = subprocess.run(
-        [sys.executable, "check.py", "nonexistent.csv"],
-        cwd="D:/must-quest",
+        [sys.executable, str(CHECK_PY), "nonexistent.csv"],
         capture_output=True,
         text=True,
     )
@@ -25,8 +29,7 @@ def test_missing_file_clean_error():
 def test_empty_csv():
     """Empty CSV (header only) should print one error line and exit 1."""
     result = subprocess.run(
-        [sys.executable, "check.py", "tests/data/hours_empty.csv"],
-        cwd="D:/must-quest",
+        [sys.executable, str(CHECK_PY), str(DATA_DIR / "hours_empty.csv")],
         capture_output=True,
         text=True,
     )
@@ -40,8 +43,7 @@ def test_empty_csv():
 def test_missing_hours_column():
     """CSV missing hours_worked column should print one error line and exit 1."""
     result = subprocess.run(
-        [sys.executable, "check.py", "tests/data/hours_missing_hours.csv"],
-        cwd="D:/must-quest",
+        [sys.executable, str(CHECK_PY), str(DATA_DIR / "hours_missing_hours.csv")],
         capture_output=True,
         text=True,
     )

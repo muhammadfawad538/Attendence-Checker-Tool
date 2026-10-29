@@ -1,6 +1,9 @@
 """Test that data/hours.csv has no weekend rows except for Grace."""
+from pathlib import Path
 from attendance.loader import load_csv
 from datetime import date
+
+DATA_DIR = Path(__file__).parent.parent / "data"
 
 
 def is_weekend(d: date) -> bool:
@@ -9,7 +12,7 @@ def is_weekend(d: date) -> bool:
 
 def test_no_weekend_rows_except_grace():
     """Ensure data/hours.csv has no weekend rows for employees other than Grace."""
-    records, warnings = load_csv("data/hours.csv")
+    records, warnings = load_csv(str(DATA_DIR / "hours.csv"))
 
     weekend_employees = set()
     for r in records:

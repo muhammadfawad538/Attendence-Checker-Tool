@@ -1,4 +1,5 @@
 """Test for noisy dataset - reproduces original noisy situation as regression case."""
+from pathlib import Path
 from attendance.loader import load_csv
 from attendance.rules import (
     check_overwork,
@@ -10,10 +11,12 @@ from attendance.rules import (
     check_weekend_work,
 )
 
+DATA_DIR = Path(__file__).parent.parent / "data"
+
 
 def test_noisy_dataset_expected_output():
     """Run the whole pipeline on data/hours_noisy.csv and assert exact expected output."""
-    records, warnings = load_csv("data/hours_noisy.csv")
+    records, warnings = load_csv(str(DATA_DIR / "hours_noisy.csv"))
 
     # Collect all flags
     all_flags = []

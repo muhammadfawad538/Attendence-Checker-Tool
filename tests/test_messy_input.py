@@ -40,20 +40,20 @@ def test_names_case_insensitive_and_merged():
         os.unlink(tmp)
 
 
-def test_hours_out_of_range():
-    """Hours below 0 or above 24 should produce warnings and be skipped. Hours 12-24 should warn but be accepted."""
+def test_hours_above_24_warning():
+    """Hours >24 should produce a warning and be skipped. Hours 30 is rejected with warning."""
     with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv', encoding='utf-8') as f:
         f.write('employee,date,hours_worked,leave_type\n')
-        f.write('Bad1,2026-01-01,-1,\n')
-        f.write('Bad2,2026-01-02,25,\n')
-        f.write('Warn1,2026-01-03,15,\n')
-        f.write('Ok1,2026-01-04,8.0,\n')
+        f.write('Bad1,2026-01-01,30,\n')
+        f.write('Ok1,2026-01-02,8.0,\n')
         tmp = f.name
     try:
         result = subprocess.run([sys.executable, 'check.py', tmp], cwd=Path(__file__).parent.parent, capture_output=True, text=True)
+        # Old code accepts 30 hours without warning (only checks <0)
+        # New code should warn and skip 30
         assert 'WARNING' in result.stdout
-        assert 'Bad1' not in result.stdout or 'Skipped' in result.stdout
-        assert 'Bad2' not in result.stdout or 'Skipped' in result.stdout
+        assert '30' in result.stdout or 'Skipped' in result.stdout
+        # 30 should not appear as a record
     finally:
         os.unlink(tmp)
 

@@ -1,4 +1,5 @@
 """Full pipeline test on the sample dataset."""
+from pathlib import Path
 from attendance.loader import load_csv
 from attendance.rules import (
     check_overwork,
@@ -10,10 +11,12 @@ from attendance.rules import (
     check_weekend_work,
 )
 
+DATA_DIR = Path(__file__).parent.parent / "data"
+
 
 def test_full_dataset_expected_flags():
     """Run the whole pipeline on data/hours.csv and assert exact expected flags."""
-    records, warnings = load_csv("data/hours.csv")
+    records, warnings = load_csv(str(DATA_DIR / "hours.csv"))
 
     # Collect all flags
     all_flags = []
