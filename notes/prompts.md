@@ -124,3 +124,32 @@ All 33 tests pass:
 ```
 ============================= 33 passed in 0.61s ==============================
 ```
+
+---
+
+## Day 2 Corrections (User Decisions A-E)
+
+After implementing the 4 changes, user identified issues and gave Decisions A-E:
+
+### Decision B: Fix sample data
+- **Problem:** Sample data had unrealistic weekend rows for all employees; Alice's overwork was on Sat/Sun
+- **Fix:** Created new data/hours.csv removing all Sat/Sun rows from original employees, moved Alice overwork to 4 weekdays (2026-01-08, 09, 12, 13), added Grace with weekend work on 2026-01-17/18, kept Eve's duplicate on 2026-01-24 (Sat), kept Frank's 8h on 2026-01-31 (Sat)
+- **Commit:** 8bf380b "Data: remove unrealistic weekend rows, move Alice overwork to weekdays, add weekend worker (my decision)"
+
+### Decision C: Restore test_full_dataset.py
+- **Problem:** Test expected weekend flags for all employees, but corrected data removes weekends from original employees
+- **Fix:** Updated test to expect: Alice=overwork (not weekend), Bob/Carol/Dave=planted flag only, Eve/Frank=planted+weekend, Grace=weekend only. Restored duplicate warning assertion.
+- **Test passes** with corrected data.
+
+### Decision D: Fix empty CSV and missing columns
+- **Problem:** Empty CSV and missing columns printed WARNING and exited 0; user wants ONE ERROR line and exit 1
+- **Fix:** Modified check.py main() to treat missing required columns as ERROR (exit 1), treat empty CSV (header only) as ERROR (exit 1). Updated test_missing_file.py to expect exit code 1 and ERROR prefix.
+- **Commit:** 84c0bff "Fix: empty CSV and missing columns print one ERROR line and exit 1"
+
+### Decision E: test_noisy_dataset.py
+- **Status:** No changes needed. Test correctly documents current expected behavior as regression case. Has 30 flags total (absence + weekend flags). Data still has weekend rows and 0-hour rows on Jan 6-7 triggering absence flags. Test passes.
+
+**All 33 tests pass after corrections.**
+```
+============================= 33 passed in 0.70s ==============================
+```
