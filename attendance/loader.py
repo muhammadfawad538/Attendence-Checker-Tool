@@ -21,6 +21,25 @@ def is_working_day(d: date) -> bool:
     return d.weekday() < 5  # Monday=0, Friday=4
 
 
+def normalize_name(name: str) -> str:
+    """Normalize employee name: strip whitespace and use title case."""
+    return name.strip().title()
+
+
+def get_canonical_name(emp: str, name_map: dict[str, str], warnings: list[str], line: int) -> str:
+    """
+    Return canonical name for employee, warning if multiple spellings merge.
+    name_map maps normalized name -> first original spelling seen.
+    """
+    norm = normalize_name(emp)
+    if norm in name_map:
+        if name_map[norm] != emp:
+            warnings.append(f"Line {line}: merged employee name {emp!r} -> {norm!r} (first seen as {name_map[norm]!r})")
+    else:
+        name_map[norm] = emp
+    return norm
+
+
 def parse_date(s: str) -> Optional[date]:
     """Parse ISO date YYYY-MM-DD, return None on failure."""
     try:
@@ -33,11 +52,24 @@ def parse_hours(s: str) -> Optional[float]:
     """Parse hours as float, return None on failure."""
     try:
         val = float(s.strip())
-        if val < 0:
+        if val < 0 or val > 24:
             return None
         return val
     except (ValueError, AttributeError):
         return None
+
+
+def validate_hours_range(hours: float, original_str: str, line: int, warnings: list[str]) -> bool:
+    """
+    Validate hours range and emit warnings.
+    Returns True if hours should be accepted, False if skipped.
+    """
+    if hours < 0 or hours > 24:
+        warnings.append(f"Line {line}: invalid hours {original_str!r} (must be 0-24)")
+        return False
+    if hours > 12:
+        warnings.append(f"Line {line}: unusual hours {original_str!r} (>12)")
+    return True
 
 
 def validate_leave_type(s: str) -> Optional[str]:
@@ -59,6 +91,7 @@ def load_csv(path: str) -> tuple[list[Record], list[str]]:
     warnings: list[str] = []
     seen: set[tuple[str, str]] = set()
     seen_first: dict[tuple[str, str], dict] = {}  # track first occurrence of duplicates
+    name_map: dict[str, str] = {}  # normalized name -> canonical name
 
     with open(path, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
@@ -78,6 +111,9 @@ def load_csv(path: str) -> tuple[list[Record], list[str]]:
             if not emp or not dt_str or not hrs_str:
                 warnings.append(f"Line {i}: missing required field(s) (employee={emp!r}, date={dt_str!r}, hours={hrs_str!r})")
                 continue
+
+            # Normalize employee name
+            emp = get_canonical_name(emp, name_map, warnings, i)
 
             # Check for duplicate (employee, date)
             key = (emp, dt_str)
@@ -99,7 +135,11 @@ def load_csv(path: str) -> tuple[list[Record], list[str]]:
 
             hrs = parse_hours(hrs_str)
             if hrs is None:
-                warnings.append(f"Line {i}: invalid hours {hrs_str!r} (must be non-negative number)")
+                warnings.append(f"Line {i}: invalid hours {hrs_str!r} (must be 0-24)")
+                continue
+
+            # Validate hours range (warning for 12-24, skip for <0 or >24)
+            if not validate_hours_range(hrs, hrs_str, i, warnings):
                 continue
 
             lt = validate_leave_type(lt_str)

@@ -1,13 +1,17 @@
 """Tests for input error handling (empty CSV, missing columns)."""
 import subprocess
 import sys
+from pathlib import Path
+
+ROOT = Path(__file__).parent.parent
+CHECK_PY = ROOT / "check.py"
+DATA_DIR = ROOT / "tests" / "data"
 
 
 def test_empty_csv_exits_with_error():
     """Empty CSV (header only) should print ERROR and exit 1."""
     result = subprocess.run(
-        [sys.executable, "check.py", "tests/data/hours_empty.csv"],
-        cwd="D:/must-quest",
+        [sys.executable, str(CHECK_PY), str(DATA_DIR / "hours_empty.csv")],
         capture_output=True,
         text=True,
     )
@@ -20,8 +24,7 @@ def test_empty_csv_exits_with_error():
 def test_missing_hours_column_exits_with_error():
     """CSV missing hours_worked column should print ERROR and exit 1."""
     result = subprocess.run(
-        [sys.executable, "check.py", "tests/data/hours_missing_hours.csv"],
-        cwd="D:/must-quest",
+        [sys.executable, str(CHECK_PY), str(DATA_DIR / "hours_missing_hours.csv")],
         capture_output=True,
         text=True,
     )

@@ -25,6 +25,16 @@ def main(csv_path: str) -> None:
     # Load data
     records, warnings = load_csv(csv_path)
 
+    # Count skipped rows (warnings that indicate a row was skipped)
+    skipped_rows = sum(1 for w in warnings if any(kw in w for kw in [
+        "missing required field",
+        "duplicate entry",
+        "invalid date",
+        "invalid hours",
+        "invalid leave_type",
+        "unusual hours",
+    ]))
+
     # Handle critical data quality issues: missing columns or no data rows
     for warning in warnings:
         if "Missing columns" in warning:
@@ -39,6 +49,10 @@ def main(csv_path: str) -> None:
     for warning in warnings:
         if "Missing columns" not in warning:
             print(f"WARNING: {warning}")
+
+    # Print skipped rows summary
+    if skipped_rows > 0:
+        print(f"Skipped {skipped_rows} row(s).")
 
     print(f"\nAnalyzing {len(records)} records...")
 
