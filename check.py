@@ -35,24 +35,24 @@ def main(csv_path: str) -> None:
         "unusual hours",
     ]))
 
-    # Handle critical data quality issues: missing columns or no data rows
+    # Handle critical data quality issues: missing columns
     for warning in warnings:
         if "Missing columns" in warning:
             print(f"ERROR: {warning}")
             sys.exit(1)
 
-    if len(records) == 0:
-        print(f"ERROR: No valid data rows in {csv_path}")
-        sys.exit(1)
-
-    # Print non-critical warnings
+    # Print all non-critical warnings (including per-row warnings)
     for warning in warnings:
         if "Missing columns" not in warning:
             print(f"WARNING: {warning}")
 
-    # Print skipped rows summary
+    # Print skipped rows summary (always, even if no valid records)
     if skipped_rows > 0:
         print(f"Skipped {skipped_rows} row(s).")
+
+    if len(records) == 0:
+        print(f"ERROR: No valid data rows in {csv_path}")
+        sys.exit(1)
 
     print(f"\nAnalyzing {len(records)} records...")
 

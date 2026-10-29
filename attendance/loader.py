@@ -22,22 +22,26 @@ def is_working_day(d: date) -> bool:
 
 
 def normalize_name(name: str) -> str:
-    """Normalize employee name: strip whitespace and use title case."""
-    return name.strip().title()
+    """Normalize employee name: strip whitespace and lowercase for comparison."""
+    return name.strip().lower()
 
 
 def get_canonical_name(emp: str, name_map: dict[str, str], warnings: list[str], line: int) -> str:
     """
     Return canonical name for employee, warning if multiple spellings merge.
-    name_map maps normalized name -> first original spelling seen.
+    name_map maps normalized name -> first original spelling seen (trimmed).
+    Returns the canonical (first-seen) spelling.
     """
-    norm = normalize_name(emp)
+    emp_trimmed = emp.strip()
+    norm = normalize_name(emp_trimmed)
     if norm in name_map:
-        if name_map[norm] != emp:
-            warnings.append(f"Line {line}: merged employee name {emp!r} -> {norm!r} (first seen as {name_map[norm]!r})")
+        canonical = name_map[norm]
+        if canonical != emp_trimmed:
+            warnings.append(f"Line {line}: merged employee name {emp_trimmed!r} -> {canonical!r}")
     else:
-        name_map[norm] = emp
-    return norm
+        name_map[norm] = emp_trimmed
+        return emp_trimmed
+    return name_map[norm]
 
 
 def parse_date(s: str) -> Optional[date]:
@@ -94,18 +98,37 @@ def load_csv(path: str) -> tuple[list[Record], list[str]]:
     name_map: dict[str, str] = {}  # normalized name -> canonical name
 
     with open(path, newline="", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
+        reader = csv.reader(f)
+        try:
+            header = next(reader)
+        except StopIteration:
+            warnings.append("Missing columns: {'employee', 'date', 'hours_worked', 'leave_type'}")
+            return records, warnings
+
         required = {"employee", "date", "hours_worked", "leave_type"}
-        if reader.fieldnames is None or not required.issubset(set(reader.fieldnames)):
-            missing = required - set(reader.fieldnames or [])
+        if not required.issubset(set(header)):
+            missing = required - set(header)
             warnings.append(f"Missing columns: {missing}")
             return records, warnings
 
+        # Map column names to indices
+        col_idx = {name: idx for idx, name in enumerate(header)}
+        required_indices = [col_idx[name] for name in ("employee", "date", "hours_worked", "leave_type")]
+
         for i, row in enumerate(reader, start=2):  # line numbers (1=header)
-            emp = (row.get("employee") or "").strip()
-            dt_str = (row.get("date") or "").strip()
-            hrs_str = (row.get("hours_worked") or "").strip()
-            lt_str = (row.get("leave_type") or "").strip()
+            # Check if row has all 4 required fields
+            if len(row) < max(required_indices) + 1:
+                # Get what we can for error message
+                emp = row[col_idx["employee"]].strip() if col_idx["employee"] < len(row) else ""
+                dt_str = row[col_idx["date"]].strip() if col_idx["date"] < len(row) else ""
+                hrs_str = row[col_idx["hours_worked"]].strip() if col_idx["hours_worked"] < len(row) else ""
+                warnings.append(f"Line {i}: missing required field(s) (employee={emp!r}, date={dt_str!r}, hours={hrs_str!r})")
+                continue
+
+            emp = row[col_idx["employee"]].strip()
+            dt_str = row[col_idx["date"]].strip()
+            hrs_str = row[col_idx["hours_worked"]].strip()
+            lt_str = row[col_idx["leave_type"]].strip()
 
             # Check for missing fields
             if not emp or not dt_str or not hrs_str:
