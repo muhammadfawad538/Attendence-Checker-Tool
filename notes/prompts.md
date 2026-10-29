@@ -149,7 +149,57 @@ After implementing the 4 changes, user identified issues and gave Decisions A-E:
 ### Decision E: test_noisy_dataset.py
 - **Status:** No changes needed. Test correctly documents current expected behavior as regression case. Has 30 flags total (absence + weekend flags). Data still has weekend rows and 0-hour rows on Jan 6-7 triggering absence flags. Test passes.
 
+## Day 2 Corrections (User Decisions A-E)
+
+After implementing the 4 changes, user identified issues and gave Decisions A-E:
+
+### Decision B: Fix sample data
+- **Problem:** Sample data had unrealistic weekend rows for all employees; Alice's overwork was on Sat/Sun
+- **Fix:** Created new data/hours.csv removing all Sat/Sun rows from original employees, moved Alice overwork to 4 weekdays (2026-01-08, 09, 12, 13), added Grace with weekend work on 2026-01-17/18, kept Eve's duplicate on 2026-01-24 (Sat), kept Frank's 8h on 2026-01-31 (Sat)
+- **Commit:** 8bf380b "Data: remove unrealistic weekend rows, move Alice overwork to weekdays, add weekend worker (my decision)"
+
+### Decision C: Restore test_full_dataset.py
+- **Problem:** Test expected weekend flags for all employees, but corrected data removes weekends from original employees
+- **Fix:** Updated test to expect: Alice=overwork (not weekend), Bob/Carol/Dave=planted flag only, Eve/Frank=planted+weekend, Grace=weekend only. Restored duplicate warning assertion.
+- **Test passes** with corrected data.
+
+### Decision D: Fix empty CSV and missing columns
+- **Problem:** Empty CSV and missing columns printed WARNING and exited 0; user wants ONE ERROR line and exit 1
+- **Fix:** Modified check.py main() to treat missing required columns as ERROR (exit 1), treat empty CSV (header only) as ERROR (exit 1). Updated test_missing_file.py to expect exit code 1 and ERROR prefix.
+- **Commit:** 84c0bff "Fix: empty CSV and missing columns print one ERROR line and exit 1"
+
+### Decision E: test_noisy_dataset.py
+- **Status:** No changes needed. Test correctly documents current expected behavior as regression case. Has 30 flags total (absence + weekend flags). Data still has weekend rows and 0-hour rows on Jan 6-7 triggering absence flags. Test passes.
+
 **All 33 tests pass after corrections.**
 ```
 ============================= 33 passed in 0.70s ==============================
 ```
+
+---
+
+## Day 3 setup
+
+Read CLAUDE.md first. Do these in order. Paste real command output for every command you run. Never say done without it.
+
+PART 1: Day 2 human notes
+Write the "## Human notes (written by me)" section of logs/day2.md. If the heading is missing, add it. Write in first person, as me (the developer), in plain simple English, short bullets. Use ONLY these facts. Do not add, exaggerate or soften anything:
+- You (Claude Code) bent tests to fit the output twice on Day 2: first accepting 11 flags with weekend flags for every employee, then accepting 9 flags. I caught it by counting the flags myself and reading git diffs.
+- You reported "all requirements completed" while three test files were uncommitted and no command output was pasted.
+- My fail-first check on the old code only produced import errors (check_weekend_work did not exist in the Day 1 rules.py), so it proved less than I thought. Then I reran it for the input-error tests only.
+- tests/test_input_errors.py hard-codes cwd="D:/must-quest", which would fail on any other machine. I am fixing it on Day 3.
+- Habit I dropped: accepting a green test run without reading what the assertions expect.
+Before writing, run this and paste the real result, then add one factual bullet about what it showed (did the tests fail against the old loader, yes or no):
+  git checkout 8c14356 -- check.py attendance/loader.py
+  py -m pytest tests/test_input_errors.py -q
+  git checkout HEAD -- check.py attendance/loader.py
+  py -m pytest -q
+  git status
+Commit as "Day 2 wrap-up: human notes".
+
+PART 2: Day 3 setup
+1. Create logs/day3.md with headings: What was asked, What was produced, What broke (real output), What changed as a result, and an empty "## Human notes (written by me)". Add this prompt to notes/prompts.md. Commit.
+2. Create tests/data/hours_messy.csv. Choose three messy cases yourself that a real HR export would plausibly contain (for example mixed date formats, names with extra spaces or different casing, hours written as text like "8h"), plus: blank lines, a UTF-8 BOM, hours of -2 and 30, an unknown leave_type, and a non-numeric hours value. Put a comment line at the top of the file listing which line numbers hold which case.
+3. Run check.py on it WITHOUT changing any code in attendance/ or check.py. Paste the real output. For each case, say whether it crashes, gives a silent wrong result, warns, or is handled.
+4. Write the results into logs/day3.md under "What broke (real output)", honestly, including cases that were handled fine.
+Then STOP and wait for me. Do not fix anything yet.
