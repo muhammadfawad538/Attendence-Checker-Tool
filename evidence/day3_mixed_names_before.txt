@@ -1,0 +1,7 @@
+WARNING: Line 3: merged employee name 'Alice' -> 'Alice' (first seen as 'alice')
+WARNING: Line 4: merged employee name 'ALICE' -> 'Alice' (first seen as 'alice')
+
+Analyzing 3 records...
+FLAG: Alice: worked 2 weekend day(s): 8h on 2026-01-03, 8h on 2026-01-04.
+
+Done. Found 1 flag(s).

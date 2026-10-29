@@ -1,0 +1,6 @@
+WARNING: Line 2: missing required field(s) (employee='Alice', date='2026-01-01', hours='')
+Skipped 1 row(s).
+
+Analyzing 1 records...
+
+Done. Found 0 flag(s).

@@ -1,0 +1,9 @@
+ logs/day2.md                  |  3 ++-
+ logs/day3.md                  | 22 +++++++++++++++-------
+ pytest.ini                    |  3 +++
+ tests/test_full_dataset.py    |  5 ++++-
+ tests/test_messy_input.py     | 16 ++++++++--------
+ tests/test_missing_file.py    | 14 ++++++++------
+ tests/test_no_weekend_rows.py |  5 ++++-
+ tests/test_noisy_dataset.py   |  5 ++++-
+ 8 files changed, 48 insertions(+), 25 deletions(-)
