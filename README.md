@@ -18,7 +18,13 @@ cd your/project/directory
 ## Usage
 ```bash
 python check.py data/hours.csv
+python check.py data/hours.csv --strict
+python check.py data/hours.csv --format json
 ```
+
+## Options
+- `--strict` - Exit with code 1 if any data-quality warnings exist
+- `--format text|json` - Output format (default: text)
 
 ## Input Format
 The CSV file must have these exact columns:
@@ -36,6 +42,7 @@ The tool checks for these patterns:
 4. **Bridge leave**: Leave taken the day before or after a public holiday
 5. **Hours on leave**: Hours logged on a day marked as leave (data error)
 6. **Unexplained absence**: Working day with no hours and no leave record
+7. **Weekend work**: Hours logged on Saturday or Sunday
 
 ## Output
 The tool prints warnings for data quality issues, then lists each flag with a one-sentence explanation:

@@ -272,26 +272,25 @@ def check_weekend_work(records: list[Record]) -> list[tuple[str, str]]:
     if not records:
         return []
 
-    by_emp: dict[str, list[Record]] = defaultdict(list)
-    for r in records:
-        by_emp[r.employee].append(r)
-
     flags: list[tuple[str, str]] = []
 
-    for emp, emp_records in by_emp.items():
-        weekend_records = [r for r in emp_records if is_weekend(r.date) and r.hours_worked > 0]
+    # Pre-filter and group by employee in one pass
+    by_emp_weekend: dict[str, list[Record]] = defaultdict(list)
+    for r in records:
+        if r.hours_worked > 0 and r.date.weekday() >= 5:  # weekend and worked
+            by_emp_weekend[r.employee].append(r)
+
+    for emp, weekend_records in by_emp_weekend.items():
         if not weekend_records:
             continue
 
         # Sort by date for deterministic output
         weekend_records.sort(key=lambda r: r.date)
 
-        dates = [r.date.isoformat() for r in weekend_records]
-        hours_str = ", ".join(f"{r.hours_worked:g}h on {r.date.isoformat()}" for r in weekend_records)
-
         if len(weekend_records) == 1:
             msg = f"worked {weekend_records[0].hours_worked:g} hours on weekend day {weekend_records[0].date.isoformat()}."
         else:
+            hours_str = ", ".join(f"{r.hours_worked:g}h on {r.date.isoformat()}" for r in weekend_records)
             msg = f"worked {len(weekend_records)} weekend day(s): {hours_str}."
 
         flags.append((emp, msg))
