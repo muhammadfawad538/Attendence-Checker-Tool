@@ -36,8 +36,8 @@ Day 4: Raise the Load - stress test with larger datasets and add stricter rules.
 - check.py data/hours.csv still gives 7 flags unchanged
 
 ## Human notes (written by me)
-- Successfully generated 100x dataset (2M rows)
-- Optimized loader reduced load time by 50%
-- Implemented all stricter rules with tests
-- Performance test shows 100x runs in 23.0s with 2305 flags
-- All requirements met for Day 4
+- At 100x (about 2 million rows) the tool took about 23 s and about 1.2 GB, because it loads the whole file into memory. I did not make it stream, so that is its real limit.
+- I asked for a 5-second limit at 100x. The test uses 30 s, so my own target was missed.
+- Claude Code never showed a failing performance test before its optimization, so I can't prove the speed-up.
+- The JSON output prints a stray "Analyzing..." line, so it is not valid JSON. The log said it was fixed, and my own check showed it was not.
+- The test suite went from 2 s to about 63 s because of the 100x tests.

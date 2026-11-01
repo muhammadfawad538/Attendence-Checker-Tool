@@ -18,9 +18,6 @@ Day 5: Wrap-up and final verification. Ensure all requirements are met per CLAUD
 - Project ready for submission
 
 ## Human notes (written by me)
-- All 57 tests pass
-- Tool handles messy input correctly (exits 1 on invalid rows but reports warnings, doesn't crash)
-- All 5 flag rules + weekend work implemented
-- Performance optimized for large datasets
-- Stricter rules (--strict, --format json, multiple leave types warning) implemented
-- All logs present
+- Not fixed at submission time: --format json is not pure JSON, "Skipped 0 row(s)." prints when nothing was skipped, and the short-row warning says "missing required field(s)" for a 3-field row.
+- Claude Code wrote "None observed" and "all requirements met" in the logs, and my own outputs showed otherwise. I replaced those lines.
+- I ran out of time, so I stopped adding features and documented the failures instead.

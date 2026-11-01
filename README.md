@@ -1,75 +1,66 @@
-# Attendance Checker - README.md
+Attendance Checker
 
-## Overview
-The Attendance Checker is a Python command-line tool that analyzes employee attendance data to identify unusual patterns that may need follow-up. It reads a CSV file with employee work hours and leave records, applies configurable flag rules, and outputs one-sentence explanations for each flag found.
+A small Python command-line tool. It reads a CSV of work hours and leave, flags unusual attendance patterns, and explains each flag in one sentence. Built over 5 days working AI-first with Claude Code (see logs/, intent.md and directive.md).
 
-## Requirements
-- Python 3.6+
-- pytest (for running tests)
+Requirements
+Python 3.9 or newer
+pytest, for the tests: py -m pip install pytest
+No other dependencies
 
-## Installation
-```bash
-# Clone or copy this repository
-cd your/project/directory
+On Windows use py. On macOS or Linux use python3.
 
-# Install dependencies (none required - uses standard library)
-```
+Run the tool
+py check.py data/hours.csv
+py check.py data/hours.csv --strict
+py check.py data/hours.csv --format json
 
-## Usage
-```bash
-python check.py data/hours.csv
-python check.py data/hours.csv --strict
-python check.py data/hours.csv --format json
-```
+Expected result on the sample file: 7 flags (one per employee), plus one data-quality warning for a deliberate duplicate row (Eve, 2026-01-22).
 
-## Options
-- `--strict` - Exit with code 1 if any data-quality warnings exist
-- `--format text|json` - Output format (default: text)
+Options
+--strict: exit with code 1 if any data-quality warning exists. On the sample file this exits 1, because of the deliberate duplicate row.
+--format text|json: output format (default text).
+Input format
 
-## Input Format
-The CSV file must have these exact columns:
-- `employee` (string) - employee identifier
-- `date` (YYYY-MM-DD) - work date in ISO format
-- `hours_worked` (float) - hours logged for that day
-- `leave_type` (string) - one of: `annual`, `sick`, `public_holiday`, or empty string
+A CSV with these exact columns:
 
-## Flag Rules
-The tool checks for these patterns:
+column	meaning
+employee	name. Matching ignores spaces and upper/lower case, and the first spelling seen is used
+date	YYYY-MM-DD
+hours_worked	number from 0 to 24
+leave_type	annual, sick, public_holiday, or empty
+What gets flagged
+Overwork: 11+ hours on several days inside a rolling 7-day window (weekends are not counted here).
+Short days: fewer than half of the person's expected hours (default 8, so under 4), on consecutive working days. A 0-hour day counts as an absence, not a short day.
+Leave pattern: repeated leave on Mondays or Fridays over 8 weeks.
+Bridge leave: leave the day before or after a public holiday.
+Hours on leave: hours logged on a day marked as leave.
+Unexplained absence: a working day with 0 hours and no leave.
+Weekend work: hours logged on a Saturday or Sunday.
 
-1. **Overwork**: 11+ hours on 3+ days in a 7-day rolling window
-2. **Short or late pattern**: < 4 hours on 3 consecutive working days
-3. **Leave pattern**: 3+ annual/sick leaves on Mondays or Fridays in 8 weeks
-4. **Bridge leave**: Leave taken the day before or after a public holiday
-5. **Hours on leave**: Hours logged on a day marked as leave (data error)
-6. **Unexplained absence**: Working day with no hours and no leave record
-7. **Weekend work**: Hours logged on Saturday or Sunday
+Exact thresholds, and the per-employee expected hours for part-time staff, are in attendance/config.py.
 
-## Output
-The tool prints warnings for data quality issues, then lists each flag with a one-sentence explanation:
-```
-FLAG: Alice: Alice has no hours and no leave recorded for working day 2026-01-06.
-FLAG: Alice: Alice worked 11+ hours on 4 days in the 7-day window ending 2026-01-11.
-```
+Messy data
 
-## Configuration
-Thresholds are configurable in `attendance/config.py`:
-- `OVERWORK_HOURS`: 11.0 (default)
-- `OVERWORK_MIN_DAYS`: 3 (default)
-- `OVERWORK_WINDOW_DAYS`: 7 (default)
-- `SHORT_HOURS`: 4.0 (default)
-- `SHORT_MIN_DAYS`: 3 (default)
+Bad rows never crash the tool. Each one produces a WARNING with its line number, the row is skipped, and the run ends with Skipped N row(s).. Handled cases include missing or short rows, bad dates, hours outside 0 to 24, text hours, unknown leave types, duplicate rows (the first row is kept), names that differ only in case or spacing, and a UTF-8 BOM. A missing file, an empty file, or a missing column prints one ERROR line and exits with code 1.
 
-## Testing
-```bash
-py -m pytest tests/ -v
-```
+Run the tests
+py -m pytest -q
 
-## Logs
-Daily logs are maintained in the `logs/` directory (day1.md through day5.md).
+This also works from another folder (pytest.ini sets the path). The suite takes about a minute because it includes 100x-size performance tests.
 
-## Example Output
-FLAG: Alice: Alice has no hours and no leave recorded for working day 2026-01-06.
-FLAG: Alice: Alice has no hours and no leave recorded for working day 2026-01-07.
-FLAG: Alice: Alice worked 11+ hours on 4 days in the 7-day window ending 2026-01-11.
-FLAG: Bob: Bob has no hours and no leave recorded for working day 2026-01-06.
-FLAG: Bob: Bob worked under 4 hours for 3 consecutive working days from 2026-01-06 to 2026-01-08.
+Large-file testing (Day 4)
+
+tools/make_big_csv.py generates big test files (they are not committed) and tools/measure.py measures time and memory. Measured at about 2 million rows: roughly 23 seconds and about 1.2 GB of memory, because the whole file is loaded at once.
+
+Known problems (not fixed)
+--format json prints an Analyzing ... records line before the JSON, so the output is not pure JSON.
+Skipped 0 row(s). can print when no row was skipped.
+The warning for a row with too few columns says "missing required field(s)" instead of naming the column count.
+The tool does not stream large files. The 5-second goal at 100x was not met (the test allows 30 seconds).
+The test suite is slow because of the 100x tests.
+Project files
+intent.md: what the tool does and what "done" means (written before the code)
+directive.md: the final standing instructions given to the AI
+logs/day1.md to logs/day5.md: daily logs, including what failed
+evidence/: saved command outputs from Day 3
+unlearning_note.md: what I unlearned
